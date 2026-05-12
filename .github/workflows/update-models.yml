@@ -1,0 +1,42 @@
+name: Update model catalog
+
+# Refreshes the embedded static model catalog (data/models.json) from
+# models.dev on a schedule. The committed JSON stays the single build-time
+# source of truth, so this only opens a PR when models.dev actually changes —
+# builds remain offline and reproducible. See scripts/gen-models-catalog.sh.
+
+on:
+  schedule:
+    # Weekly, Mondays 06:00 UTC.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Regenerate catalog
+        run: ./scripts/gen-models-catalog.sh
+
+      - name: Open PR if changed
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: 'chore: refresh model catalog from models.dev'
+          title: 'chore: refresh model catalog from models.dev'
+          body: |
+            Automated refresh of `data/models.json` from https://models.dev/api.json
+            via `scripts/gen-models-catalog.sh`.
+
+            Review the diff for unexpected additions/removals before merging.
+          branch: chore/refresh-model-catalog
+          delete-branch: true
+          add-paths: data/models.json

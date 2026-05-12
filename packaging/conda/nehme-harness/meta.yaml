@@ -1,0 +1,44 @@
+{% set name = "nh" %}
+{% set version = "0.1.0_beta" %}
+
+package:
+  name: {{ name }}
+  version: {{ version }}
+
+source:
+  url: https://github.com/NehmeAILabs/nehme-harness/archive/refs/tags/v{{ version }}.tar.gz
+  sha256: 1e3f14bc2d32122a93b6e608a6c620b7585d9f8c8bb811927809398a141bdf0f
+
+build:
+  number: 0
+  script_env:
+    - CARGO_PROFILE_RELEASE_STRIP=symbols
+    - CARGO_PROFILE_RELEASE_LTO=fat
+
+requirements:
+  build:
+    - {{ stdlib('c') }}
+    - {{ compiler('c') }}
+    - {{ compiler('rust') }}
+    - cargo-bundle-licenses
+    - cargo-auditable
+
+test:
+  commands:
+    - nh --help
+    - nh --version
+    - test -f ${PREFIX}/THIRDPARTY.yml
+
+about:
+  home: https://github.com/NehmeAILabs/nehme-harness
+  summary: Minimalistic coding agent written in Rust, optimized for memory footprint and performance
+  license: GPL-3.0-only
+  license_file:
+    - LICENSE
+    - THIRDPARTY.yml
+  documentation: https://github.com/NehmeAILabs/nehme-harness
+  repository: https://github.com/NehmeAILabs/nehme-harness
+
+extra:
+  recipe-maintainers:
+    - gi-dellav

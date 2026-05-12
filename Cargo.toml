@@ -1,0 +1,94 @@
+[package]
+name = "nehme-harness"
+version = "0.1.0-beta"
+edition = "2024"
+authors = ["Giuseppe Della Vedova"]
+description = "Heavy fork of zerostack — minimal coding agent in Rust, optimized for token efficiency"
+license = "GPL-3.0-only"
+homepage = "https://github.com/NehmeAILabs/nehme-harness"
+repository = "https://github.com/NehmeAILabs/nehme-harness"
+readme = "README.md"
+keywords = ["ai", "cli", "dev"]
+
+[[bin]]
+name = "nh"
+path = "src/main.rs"
+
+[features]
+default = ['loop', 'git-worktree', 'mcp', 'subagents', 'archmd', 'status-signals', 'context']
+status-signals = []
+loop = []
+git-worktree = []
+mcp = [
+    "dep:rmcp",
+    "rmcp?/client",
+    "rmcp?/transport-child-process",
+    "rmcp?/transport-streamable-http-client-reqwest",
+]
+acp = ["dep:agent-client-protocol", "dep:blocking"]
+memory = []                              
+subagents = []
+archmd = []
+multithread = ["tokio/rt-multi-thread"]  
+multimodal = ["rig/image"]               
+pdf = ["multimodal", "rig/pdf"]   
+advisor = []
+context = ["dep:rusqlite"]
+
+[dependencies]
+rig = { version = "0.38", features = ["rmcp"] }
+rmcp = { version = "1.7", optional = true, default-features = false, features = [
+    "client",
+    "transport-child-process",
+    "transport-streamable-http-client-reqwest",
+] }
+clap = { version = "4", features = ["derive", "env"] }
+crossterm = "0.29"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "1.1"
+tokio = { version = "1", features = [
+    "rt",
+    "macros",
+    "sync",
+    "time",
+    "process",
+    "fs",
+] }
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+thiserror = "2"
+futures = "0.3"
+reqwest = "0.13"
+html2text = "0.14"
+scraper = "0.22"
+urlencoding = "2"
+dirs = "6"
+compact_str = { version = "0.9", features = ["serde"] }
+smallvec = "1"
+regex = "1"
+unicode-width = "0.2"
+ignore = "0.4"
+pulldown-cmark = "0.13"
+include_dir = "0.7"
+http = "1"
+agent-client-protocol = { version = "0.12.0", optional = true }
+blocking = { version = "1", optional = true }
+mimalloc = { version = "0.1", default-features = false }
+rusqlite = { version = "0.33", features = ["bundled-sqlcipher"], optional = true }
+
+[profile.dev]
+opt-level = 1
+debug = false
+codegen-units = 16
+incremental = true
+
+[profile.release]
+opt-level = "z"
+lto = "thin"
+codegen-units = 1
+strip = true
+debug = false

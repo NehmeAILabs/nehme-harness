@@ -1,0 +1,530 @@
+use compact_str::CompactString;
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+
+use super::file::FilePicker;
+use super::list::ListPicker;
+use super::models::ModelsPicker;
+
+use crate::ui::input::Picker;
+use crate::ui::input::cursor::prev_char_boundary;
+
+pub fn handle_file_key(
+    buffer: &mut CompactString,
+    cursor: &mut usize,
+    picker: &mut FilePicker,
+    key: KeyEvent,
+) -> bool {
+    match key.code {
+        KeyCode::Char(c)
+            if c == '\x08' || (c == 'h' && key.modifiers.contains(KeyModifiers::CONTROL)) =>
+        {
+            if picker.cursor > 0 {
+                picker.backspace();
+                *cursor = prev_char_boundary(buffer, *cursor);
+                buffer.remove(*cursor);
+            } else {
+                let at_pos = buffer.rfind('@');
+                if let Some(at) = at_pos {
+                    let before: String = buffer.chars().take(at).collect();
+                    let after: String = buffer.chars().skip(at + 1).collect();
+                    *buffer = format!("{}{}", before, after).into();
+                    *cursor = at;
+                }
+                picker.deactivate();
+            }
+            true
+        }
+        KeyCode::Char(c) => {
+            picker.char_input(c);
+            buffer.insert(*cursor, c);
+            *cursor += c.len_utf8();
+            true
+        }
+        KeyCode::Backspace => {
+            if picker.cursor > 0 {
+                picker.backspace();
+                *cursor = prev_char_boundary(buffer, *cursor);
+                buffer.remove(*cursor);
+                true
+            } else {
+                let at_pos = buffer.rfind('@');
+                if let Some(at) = at_pos {
+                    let before: String = buffer.chars().take(at).collect();
+                    let after: String = buffer.chars().skip(at + 1).collect();
+                    *buffer = format!("{}{}", before, after).into();
+                    *cursor = at;
+                }
+                picker.deactivate();
+                true
+            }
+        }
+        KeyCode::Tab => {
+            if key
+                .modifiers
+                .contains(crossterm::event::KeyModifiers::SHIFT)
+            {
+                picker.select_prev();
+            } else {
+                picker.select_next();
+            }
+            true
+        }
+        KeyCode::Up => {
+            picker.select_prev();
+            true
+        }
+        KeyCode::Down => {
+            picker.select_next();
+            true
+        }
+        KeyCode::Enter => {
+            if let Some(path) = picker.selected_path() {
+                let path_str = path.to_string_lossy().to_string();
+                let at_pos = buffer.rfind('@');
+                if let Some(at) = at_pos {
+                    let before: String = buffer.chars().take(at).collect();
+                    let after_offset = at + 1 + picker.query.len();
+                    let after: String = buffer.chars().skip(after_offset).collect();
+                    let new_len = before.len() + path_str.len();
+                    *buffer = format!("{}{}{}", before, path_str, after).into();
+                    *cursor = new_len;
+                }
+            }
+            picker.deactivate();
+            true
+        }
+        KeyCode::Esc => {
+            let at_pos = buffer.rfind('@');
+            if let Some(at) = at_pos {
+                let before: String = buffer.chars().take(at).collect();
+                let after: String = buffer.chars().skip(at + 1 + picker.query.len()).collect();
+                *buffer = format!("{}{}", before, after).into();
+                *cursor = at;
+            }
+            picker.deactivate();
+            true
+        }
+        _ => false,
+    }
+}
+
+pub struct CommandPickerCtx<'a> {
+    pub prompt_names: &'a [String],
+    pub theme_names: &'a [String],
+    pub quick_model_names: &'a [String],
+    pub live_model_names: &'a [String],
+    pub provider_names: &'a [String],
+}
+
+pub fn handle_command_key(
+    buffer: &mut CompactString,
+    cursor: &mut usize,
+    ctx: &CommandPickerCtx,
+    picker: &mut ListPicker,
+    key: KeyEvent,
+) -> (bool, Option<Picker>) {
+    match key.code {
+        KeyCode::Char(c)
+            if c == '\x08' || (c == 'h' && key.modifiers.contains(KeyModifiers::CONTROL)) =>
+        {
+            if picker.cursor > 0 {
+                picker.backspace();
+                let byte_in_query = picker
+                    .query
+                    .char_indices()
+                    .nth(picker.cursor)
+                    .map(|(i, _)| i)
+                    .unwrap_or(picker.query.len());
+                let remove_pos = 1 + byte_in_query;
+                if remove_pos < buffer.len() {
+                    buffer.remove(remove_pos);
+                }
+                *cursor = prev_char_boundary(buffer, *cursor);
+            } else {
+                if buffer.starts_with('/') {
+                    let after: String = buffer
+                        .chars()
+                        .skip(1 + picker.query.chars().count())
+                        .collect();
+                    *buffer = format!("/{}", after).into();
+                    *cursor = 1;
+                }
+                picker.deactivate();
+            }
+            (true, None)
+        }
+        KeyCode::Char(c) => {
+            picker.char_input(c);
+            let byte_in_query = picker
+                .query
+                .char_indices()
+                .nth(picker.cursor.saturating_sub(1))
+                .map(|(i, _)| i)
+                .unwrap_or(picker.query.len());
+            let pos = 1 + byte_in_query;
+            buffer.insert(pos, c);
+            *cursor += c.len_utf8();
+            (true, None)
+        }
+        KeyCode::Backspace => {
+            if picker.cursor > 0 {
+                picker.backspace();
+                let byte_in_query = picker
+                    .query
+                    .char_indices()
+                    .nth(picker.cursor)
+                    .map(|(i, _)| i)
+                    .unwrap_or(picker.query.len());
+                let remove_pos = 1 + byte_in_query;
+                if remove_pos < buffer.len() {
+                    buffer.remove(remove_pos);
+                }
+                *cursor = prev_char_boundary(buffer, *cursor);
+                (true, None)
+            } else {
+                if buffer.starts_with('/') {
+                    let after: String = buffer
+                        .chars()
+                        .skip(1 + picker.query.chars().count())
+                        .collect();
+                    *buffer = format!("/{}", after).into();
+                    *cursor = 1;
+                }
+                picker.deactivate();
+                (true, None)
+            }
+        }
+        KeyCode::Tab => {
+            if key
+                .modifiers
+                .contains(crossterm::event::KeyModifiers::SHIFT)
+            {
+                picker.select_prev();
+            } else {
+                picker.select_next();
+            }
+            (true, None)
+        }
+        KeyCode::Up => {
+            picker.select_prev();
+            (true, None)
+        }
+        KeyCode::Down => {
+            picker.select_next();
+            (true, None)
+        }
+        KeyCode::Enter => {
+            if let Some(cmd) = picker.selected_name() {
+                let selected = cmd.to_string();
+                let slash_pos = buffer.find('/').unwrap_or(0);
+                let before: String = buffer.chars().take(slash_pos).collect();
+                let after_offset = slash_pos + 1 + picker.query.chars().count();
+                let after: String = buffer.chars().skip(after_offset).collect();
+                let insertion = if after.is_empty() || after.starts_with(' ') {
+                    format!("{} ", selected)
+                } else {
+                    format!("{}{}", selected, after)
+                };
+                *buffer = format!("{}{}", before, insertion).into();
+                *cursor = before.len() + selected.len() + 1;
+
+                if selected == "/prompt" && !ctx.prompt_names.is_empty() {
+                    picker.deactivate();
+                    let mut pp = ListPicker::new();
+                    pp.set_items(ctx.prompt_names.to_vec());
+                    pp.activate();
+                    return (true, Some(Picker::Prefixed(pp, "/prompt ")));
+                }
+                if selected == "/models"
+                    && !(ctx.quick_model_names.is_empty() && ctx.live_model_names.is_empty())
+                {
+                    picker.deactivate();
+                    let mut mp = ModelsPicker::new();
+                    mp.set_groups(
+                        ctx.quick_model_names.to_vec(),
+                        ctx.live_model_names.to_vec(),
+                    );
+                    mp.activate();
+                    return (true, Some(Picker::Models(mp)));
+                }
+                if selected == "/theme" && !ctx.theme_names.is_empty() {
+                    picker.deactivate();
+                    let mut tp = ListPicker::new();
+                    tp.set_items(ctx.theme_names.to_vec());
+                    tp.activate();
+                    return (true, Some(Picker::Prefixed(tp, "/theme ")));
+                }
+                if selected == "/provider" && !ctx.provider_names.is_empty() {
+                    picker.deactivate();
+                    let mut pp = ListPicker::new();
+                    pp.set_items(ctx.provider_names.to_vec());
+                    pp.activate();
+                    return (true, Some(Picker::Prefixed(pp, "/provider ")));
+                }
+                if selected == "/queue" {
+                    picker.deactivate();
+                    let mut qp = ListPicker::new();
+                    qp.set_items(vec![
+                        "ls".to_string(),
+                        "clear".to_string(),
+                        "pop".to_string(),
+                    ]);
+                    qp.activate();
+                    return (true, Some(Picker::Prefixed(qp, "/queue ")));
+                }
+            }
+            picker.deactivate();
+            (true, None)
+        }
+        KeyCode::Esc => {
+            let slash_pos = buffer.find('/').unwrap_or(0);
+            let before: String = buffer.chars().take(slash_pos).collect();
+            let after: String = buffer
+                .chars()
+                .skip(slash_pos + 1 + picker.query.chars().count())
+                .collect();
+            *buffer = format!("{}/{}", before, after).into();
+            *cursor = slash_pos + 1;
+            picker.deactivate();
+            (true, None)
+        }
+        _ => (false, None),
+    }
+}
+
+pub fn handle_prefixed_key(
+    buffer: &mut CompactString,
+    cursor: &mut usize,
+    picker: &mut ListPicker,
+    prefix: &str,
+    key: KeyEvent,
+) -> bool {
+    let prefix_len = prefix.len();
+    match key.code {
+        KeyCode::Char(c)
+            if c == '\x08' || (c == 'h' && key.modifiers.contains(KeyModifiers::CONTROL)) =>
+        {
+            if picker.cursor > 0 {
+                picker.backspace();
+                let byte_in_query = picker
+                    .query
+                    .char_indices()
+                    .nth(picker.cursor)
+                    .map(|(i, _)| i)
+                    .unwrap_or(picker.query.len());
+                let remove_pos = prefix_len + byte_in_query;
+                if remove_pos < buffer.len() {
+                    buffer.remove(remove_pos);
+                }
+                *cursor = prev_char_boundary(buffer, *cursor);
+            } else {
+                let after_offset = prefix_len + picker.query.chars().count();
+                if buffer.len() >= after_offset {
+                    let before: String = buffer.chars().take(prefix_len).collect();
+                    let after: String = buffer.chars().skip(after_offset).collect();
+                    *buffer = format!("{}{}", before, after).into();
+                    *cursor = prefix_len;
+                }
+                picker.deactivate();
+            }
+            true
+        }
+        KeyCode::Char(c) => {
+            picker.char_input(c);
+            let byte_in_query = picker
+                .query
+                .char_indices()
+                .nth(picker.cursor.saturating_sub(1))
+                .map(|(i, _)| i)
+                .unwrap_or(picker.query.len());
+            let insert_pos = prefix_len + byte_in_query;
+            buffer.insert(insert_pos, c);
+            *cursor += c.len_utf8();
+            true
+        }
+        KeyCode::Backspace => {
+            if picker.cursor > 0 {
+                picker.backspace();
+                let byte_in_query = picker
+                    .query
+                    .char_indices()
+                    .nth(picker.cursor)
+                    .map(|(i, _)| i)
+                    .unwrap_or(picker.query.len());
+                let remove_pos = prefix_len + byte_in_query;
+                if remove_pos < buffer.len() {
+                    buffer.remove(remove_pos);
+                }
+                *cursor = prev_char_boundary(buffer, *cursor);
+                true
+            } else {
+                let after_offset = prefix_len + picker.query.chars().count();
+                if buffer.len() >= after_offset {
+                    let before: String = buffer.chars().take(prefix_len).collect();
+                    let after: String = buffer.chars().skip(after_offset).collect();
+                    *buffer = format!("{}{}", before, after).into();
+                    *cursor = prefix_len;
+                }
+                picker.deactivate();
+                true
+            }
+        }
+        KeyCode::Tab => {
+            if key
+                .modifiers
+                .contains(crossterm::event::KeyModifiers::SHIFT)
+            {
+                picker.select_prev();
+            } else {
+                picker.select_next();
+            }
+            true
+        }
+        KeyCode::Up => {
+            picker.select_prev();
+            true
+        }
+        KeyCode::Down => {
+            picker.select_next();
+            true
+        }
+        KeyCode::Enter => {
+            if let Some(name) = picker.selected_name() {
+                let after_offset = prefix_len + picker.query.chars().count();
+                let before: String = buffer.chars().take(prefix_len).collect();
+                let after: String = buffer.chars().skip(after_offset).collect();
+                *buffer = format!("{}{}{}", before, name, after).into();
+                *cursor = prefix_len + name.len();
+            }
+            picker.deactivate();
+            true
+        }
+        KeyCode::Esc => {
+            let after_offset = prefix_len + picker.query.chars().count();
+            if buffer.len() >= after_offset {
+                let before: String = buffer.chars().take(prefix_len).collect();
+                let after: String = buffer.chars().skip(after_offset).collect();
+                *buffer = format!("{}{}", before, after).into();
+                *cursor = prefix_len;
+            }
+            picker.deactivate();
+            true
+        }
+        _ => false,
+    }
+}
+
+pub fn handle_models_key(
+    buffer: &mut CompactString,
+    cursor: &mut usize,
+    picker: &mut ModelsPicker,
+    key: KeyEvent,
+) -> bool {
+    let prefix = "/models ";
+    let prefix_len = prefix.len();
+    match key.code {
+        KeyCode::Char(c)
+            if c == '\x08' || (c == 'h' && key.modifiers.contains(KeyModifiers::CONTROL)) =>
+        {
+            if picker.cursor > 0 {
+                picker.backspace();
+                let byte_in_query = picker
+                    .query
+                    .char_indices()
+                    .nth(picker.cursor)
+                    .map(|(i, _)| i)
+                    .unwrap_or(picker.query.len());
+                let remove_pos = prefix_len + byte_in_query;
+                if remove_pos < buffer.len() {
+                    buffer.remove(remove_pos);
+                }
+                *cursor = prev_char_boundary(buffer, *cursor);
+            } else {
+                let after_offset = prefix_len + picker.query.chars().count();
+                if buffer.len() >= after_offset {
+                    let before: String = buffer.chars().take(prefix_len).collect();
+                    let after: String = buffer.chars().skip(after_offset).collect();
+                    *buffer = format!("{}{}", before, after).into();
+                    *cursor = prefix_len;
+                }
+                picker.deactivate();
+            }
+            true
+        }
+        KeyCode::Char(c) => {
+            picker.char_input(c);
+            let byte_in_query = picker
+                .query
+                .char_indices()
+                .nth(picker.cursor.saturating_sub(1))
+                .map(|(i, _)| i)
+                .unwrap_or(picker.query.len());
+            let insert_pos = prefix_len + byte_in_query;
+            buffer.insert(insert_pos, c);
+            *cursor += c.len_utf8();
+            true
+        }
+        KeyCode::Backspace => {
+            if picker.cursor > 0 {
+                picker.backspace();
+                let byte_in_query = picker
+                    .query
+                    .char_indices()
+                    .nth(picker.cursor)
+                    .map(|(i, _)| i)
+                    .unwrap_or(picker.query.len());
+                let remove_pos = prefix_len + byte_in_query;
+                if remove_pos < buffer.len() {
+                    buffer.remove(remove_pos);
+                }
+                *cursor = prev_char_boundary(buffer, *cursor);
+                true
+            } else {
+                let after_offset = prefix_len + picker.query.chars().count();
+                if buffer.len() >= after_offset {
+                    let before: String = buffer.chars().take(prefix_len).collect();
+                    let after: String = buffer.chars().skip(after_offset).collect();
+                    *buffer = format!("{}{}", before, after).into();
+                    *cursor = prefix_len;
+                }
+                picker.deactivate();
+                true
+            }
+        }
+        KeyCode::Tab | KeyCode::BackTab => {
+            picker.toggle_group();
+            true
+        }
+        KeyCode::Up => {
+            picker.select_prev();
+            true
+        }
+        KeyCode::Down => {
+            picker.select_next();
+            true
+        }
+        KeyCode::Enter => {
+            if let Some(name) = picker.selected_name() {
+                let after_offset = prefix_len + picker.query.chars().count();
+                let before: String = buffer.chars().take(prefix_len).collect();
+                let after: String = buffer.chars().skip(after_offset).collect();
+                *buffer = format!("{}{}{}", before, name, after).into();
+                *cursor = prefix_len + name.len();
+            }
+            picker.deactivate();
+            true
+        }
+        KeyCode::Esc => {
+            let after_offset = prefix_len + picker.query.chars().count();
+            if buffer.len() >= after_offset {
+                let before: String = buffer.chars().take(prefix_len).collect();
+                let after: String = buffer.chars().skip(after_offset).collect();
+                *buffer = format!("{}{}", before, after).into();
+                *cursor = prefix_len;
+            }
+            picker.deactivate();
+            true
+        }
+        _ => false,
+    }
+}

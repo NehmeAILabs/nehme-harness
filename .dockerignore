@@ -1,0 +1,13 @@
+target/
+benchmark/
+node_modules/
+.git/
+*.md
+!AGENTS.md
+!ARCHITECTURE.md
+scripts/
+tap/
+packaging/
+flake.nix
+install.sh
+justfile

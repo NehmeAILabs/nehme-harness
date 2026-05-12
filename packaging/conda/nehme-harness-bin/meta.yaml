@@ -1,0 +1,38 @@
+{% set name = "nehme-harness-bin" %}
+{% set version = "0.1.0_beta" %}
+
+package:
+  name: {{ name }}
+  version: {{ version }}
+
+source:
+  - url: https://github.com/NehmeAILabs/nehme-harness/releases/download/v{{ version }}/nh-x86_64-unknown-linux-musl.tar.gz  # [linux and x86_64]
+    sha256: 022d8ff8120a9769223a0d5630f95135bce81173e7aa0867b676e07ecb0cc62f
+  - url: https://github.com/NehmeAILabs/nehme-harness/releases/download/v{{ version }}/nh-aarch64-unknown-linux-musl.tar.gz  # [linux and aarch64]
+    sha256: b286667885986c12f114becebbea0a7e302d399149b4e20c11b032cd39267a7d
+  - url: https://raw.githubusercontent.com/NehmeAILabs/nehme-harness/v{{ version }}/LICENSE
+    sha256: 3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986
+
+build:
+  number: 0
+  binary_relocation: false
+
+requirements:
+  build: []
+  host: []
+  run: []
+
+test:
+  commands:
+    - nh --help
+    - nh --version
+
+about:
+  home: https://github.com/NehmeAILabs/nehme-harness
+  license: GPL-3.0-only
+  license_file: LICENSE
+  summary: Minimalistic coding agent written in Rust, optimized for memory footprint and performance
+
+extra:
+  recipe-maintainers:
+    - gi-dellav

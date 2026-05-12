@@ -1,0 +1,20 @@
+pkgbase = nehme-harness-bin
+	pkgdesc = Minimalistic coding agent written in Rust, optimized for memory footprint and performance
+	pkgver = 0.1.0_beta
+	pkgrel = 1
+	url = https://github.com/NehmeAILabs/nehme-harness
+	arch = x86_64
+	arch = aarch64
+	license = GPL-3.0-only
+	provides = nehme-harness
+	conflicts = nehme-harness
+	source_x86_64 = nehme-harness-bin-1.4.5-x86_64.tar.gz::https://github.com/NehmeAILabs/nehme-harness/releases/download/v1.4.5/nh-x86_64-unknown-linux-musl.tar.gz
+	source_x86_64 = LICENSE::https://raw.githubusercontent.com/NehmeAILabs/nehme-harness/v1.4.5/LICENSE
+	source_aarch64 = nehme-harness-bin-1.4.5-aarch64.tar.gz::https://github.com/NehmeAILabs/nehme-harness/releases/download/v1.4.5/nh-aarch64-unknown-linux-musl.tar.gz
+	source_aarch64 = LICENSE::https://raw.githubusercontent.com/NehmeAILabs/nehme-harness/v1.4.5/LICENSE
+	sha256sums_x86_64 = 022d8ff8120a9769223a0d5630f95135bce81173e7aa0867b676e07ecb0cc62f
+	sha256sums_x86_64 = 3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986
+	sha256sums_aarch64 = b286667885986c12f114becebbea0a7e302d399149b4e20c11b032cd39267a7d
+	sha256sums_aarch64 = 3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986
+
+pkgname = nehme-harness-bin

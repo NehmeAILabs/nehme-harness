@@ -1,0 +1,31 @@
+# Maintainer: Giuseppe Della Vedova <contact@nehmeailabs.com>
+# Upstream: https://github.com/NehmeAILabs/nehme-harness
+
+pkgname=nehme-harness-bin
+pkgver=0.1.0_beta
+pkgrel=1
+pkgdesc="Heavy fork of zerostack — minimal coding agent in Rust, optimized for token efficiency"
+arch=('x86_64' 'aarch64')
+url="https://github.com/NehmeAILabs/nehme-harness"
+license=('GPL-3.0-only')
+provides=('nehme-harness')
+conflicts=('nehme-harness')
+makedepends=()
+depends=()
+
+source_x86_64=(
+    "${pkgname}-${pkgver}-x86_64.tar.gz::https://github.com/NehmeAILabs/nehme-harness/releases/download/v${pkgver}/nh-x86_64-unknown-linux-musl.tar.gz"
+    "LICENSE::https://raw.githubusercontent.com/NehmeAILabs/nehme-harness/v${pkgver}/LICENSE"
+)
+source_aarch64=(
+    "${pkgname}-${pkgver}-aarch64.tar.gz::https://github.com/NehmeAILabs/nehme-harness/releases/download/v${pkgver}/nh-aarch64-unknown-linux-musl.tar.gz"
+    "LICENSE::https://raw.githubusercontent.com/NehmeAILabs/nehme-harness/v${pkgver}/LICENSE"
+)
+
+sha256sums_x86_64=('022d8ff8120a9769223a0d5630f95135bce81173e7aa0867b676e07ecb0cc62f' '3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986')
+sha256sums_aarch64=('b286667885986c12f114becebbea0a7e302d399149b4e20c11b032cd39267a7d' '3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986')
+
+package() {
+    install -Dm755 "nh-${CARCH}-unknown-linux-musl" "${pkgdir}/usr/bin/nh"
+    install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}
