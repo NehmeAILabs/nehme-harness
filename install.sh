@@ -83,7 +83,23 @@ echo "  -> ${URL}"
 TMPDIR="$(mktemp -d)"
 trap 'rm -rf "$TMPDIR"' EXIT
 
-curl -fsSL --max-time 300 -o "${TMPDIR}/${TARGET}.tar.gz" "$URL"
+# Try musl first, fall back to gnu for Linux
+if ! curl -fsSL --max-time 300 -o "${TMPDIR}/${TARGET}.tar.gz" "$URL" 2>/dev/null; then
+    if [[ "$OS" == "unknown-linux-musl" ]]; then
+        GNU_TARGET="nh-${ARCH}-unknown-linux-gnu"
+        GNU_URL="https://github.com/${REPO}/releases/latest/download/${GNU_TARGET}.tar.gz"
+        echo "Musl not found, trying gnu (${GNU_TARGET})..."
+        echo "  -> ${GNU_URL}"
+        if ! curl -fsSL --max-time 300 -o "${TMPDIR}/${GNU_TARGET}.tar.gz" "$GNU_URL"; then
+            echo "Error: could not download binary for ${ARCH}-linux." >&2
+            exit 1
+        fi
+        TARGET="$GNU_TARGET"
+    else
+        echo "Error: could not download ${TARGET}." >&2
+        exit 1
+    fi
+fi
 
 # ---- install ----
 mkdir -p "$INSTALL_DIR"
